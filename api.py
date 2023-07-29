@@ -43,7 +43,6 @@ worker = username
 st.warning('Please enter your username and password')
 
 
-
 if authentication_status is None:
     try:
         if authenticator.register_user('Register user', preauthorization=False):
