@@ -47,5 +47,5 @@ class PreProcess():
         testDf.set_index('index', inplace=True)
 
         trainDf.to_csv(os.path.join(self.save_path, f'train_{self.worker}.csv'), index=None)
-        valDf.to_csv(os.path.join(self.save_path, f'valid_{self.worker}.csv'), index=None)
+        valDf.to_csv(os.path.join(self.save_path, f'val_{self.worker}.csv'), index=None)
         testDf.to_csv(os.path.join(self.save_path, f'test_{self.worker}.csv'), index=None)

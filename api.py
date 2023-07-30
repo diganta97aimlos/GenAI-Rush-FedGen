@@ -15,33 +15,44 @@ import yaml
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 from PIL import Image
-from packages.fedgen.fedgen.predict import Predict
+# from packages.fedgen.fedgen.predict import Predict
 
-batch_size = 16
+batch_size = 32
 epochs = 2
 
 c = Client(None, None)
 
-with open('/home/ubuntu/airflow/dags/packages/fedgen/credentials.yml') as file:
+with open('credentials.yml') as file:
     cred = yaml.load(file, Loader=SafeLoader)
 file.close()
 
 authentication_status = None
 
-# if st.session_state["authentication_status"] is None:
-st.subheader('Welcome to FedGen Platform: Create Customized Data | Train Federated Models with Privacy')
+st.subheader('Welcome to FedGen: Collaborative Private Learning')
+
 authenticator = stauth.Authenticate(
     cred['credentials'],
     cred['cookie']['name'],
     cred['cookie']['key'],
-    cred['cookie']['expiry_days'],
-    cred['preauthorized']
+    cred['cookie']['expiry_days']
 )
 
 name, authentication_status, username = authenticator.login('Login', 'main')
 worker = username
 st.warning('Please enter your username and password')
 
+def extract_zip_file(zipFile, worker):
+    for filename in zipFile:
+        with ZipFile(f'../uploads/{filename.name}', 'r') as zipObj:
+            zipObj.extractall('../uploads/')
+            if f'{worker}' in os.listdir('../workers'):
+                for category in os.listdir(f'../uploads'):
+                    if category in os.listdir(f'../workers/{worker}'):
+                        for fileData in os.listdir(f'../uploads/{category}'):
+                            src = f'../uploads/{category}/{fileData}'
+                            dest = f'../workers/{worker}/{category}/{fileData}'
+                            shutil.copyfile(src, dest)
+        os.remove(f'../uploads/{filename.name}')
 
 if authentication_status is None:
     try:
@@ -56,61 +67,54 @@ if authentication_status:
     sidebarObj = st.sidebar
 
     option = sidebarObj.selectbox('Choose Your Service',
-    (None, 'Federated AI', 'Generative AI', 'FedGen AI'))
+    (None, 'Model Collaboration', 'Data Generation', 'FedGen AI'))
 
-    if option is not None and option == 'Federated AI':
-        st.subheader('Choose Your Data')
-        dataset = st.selectbox('Dataset', (None, 'Leaf', 'Cancer'))
-        if dataset == 'Leaf':
-            zipFile = st.file_uploader("Upload Your Data", type=(["zip"]), accept_multiple_files=True)
-            if zipFile is not None:
-                for filename in zipFile:
-                    with ZipFile(f'/home/ubuntu/kreedaAI/apiData/{filename.name}', 'r') as zipObj:
-                        zipObj.extractall('/home/ubuntu/kreedaAI/apiData')
-                        worker = filename.name.split('.')[0]
-                        if f'{worker}' in os.listdir('/home/ubuntu/kreedaAI/fedgen/workers'):
-                            for category in os.listdir(f'/home/ubuntu/kreedaAI/apiData/{worker}'):
-                                if category in os.listdir(f'/home/ubuntu/kreedaAI/fedgen/workers/{worker}/'):
-                                    for fileData in os.listdir(f'/home/ubuntu/kreedaAI/apiData/{worker}/{category}'):
-                                        src = f'/home/ubuntu/kreedaAI/apiData/{worker}/{category}/{fileData}'
-                                        dest = f'/home/ubuntu/kreedaAI/fedgen/workers/{worker}/{category}/{fileData}'
-                                        shutil.copyfile(src, dest)
-            trainStatus = sidebarObj.selectbox('Train Your Federated Model', ('No', 'Yes'))
+    if option is not None and option == 'FedGen AI':
+        st.subheader('Choose Your Vertical')
+        vertical = st.selectbox('Vertical', (None, 'Health & Medical'))
+        if vertical == 'Health & Medical':
+            st.subheader('Choose Your Dataset')
+            dataset = st.selectbox('Dataset', (None, 'Covid Prediction & Analysis'))
+            if dataset == 'Covid Prediction & Analysis':
+                zipFile = st.file_uploader("Upload Your Data", type=(["zip"]), accept_multiple_files=True)
+                if zipFile is not None:
+                    extract_zip_file(zipFile, worker)
+            trainStatus = sidebarObj.selectbox('Perform Collaborative Training', ('No', 'Yes'))
             if trainStatus == 'Yes':
                 epochs = sidebarObj.slider('Training Rounds', 2, 50, 100)
-                batch_size = sidebarObj.slider('Training Batch Size', 4, 16, 32)
+                batch_size = sidebarObj.slider('Training Batch Size', 16, 32, 48)
                 st.subheader("Apache Airflow - DAG Viewer")
-                dag_id = 'fedgen-platform'
-                dag_bag = DagBag(dag_folder='/home/ubuntu/airflow/dags', include_examples=False)
+                dag_id = 'trainer'
+                dag_bag = DagBag(dag_folder='airflow/dags', include_examples=False)
                 dag = dag_bag.dags[dag_id]
                 doc_md = getattr(dag, "doc_md", None)
                 if doc_md:
                     st.markdown(doc_md)
-                with st.expander('FedGen: Federated'):
+                with st.expander('FedGen: Collaborator & Generator'):
                     st.graphviz_chart(render_dag(dag), use_container_width=False)
                 start_process = sidebarObj.button('Start Process')
                 if start_process:
                     st.info('Federation Process Started')
                     state = 'failed'
                     with st.spinner('Please wait for the process to complete...'):
-                        with open('/home/ubuntu/airflow/dags/run_config.json', 'w') as file:
-                            config_dict = {'run_id': 1, 'mode': 'train', 'epochs': epochs, 'batch_size': batch_size, 
-                                        'selected_model': None, 'client': worker, 'prediction_mode': None}
+                        with open('run_config.json', 'w') as file:
+                            config_dict = {'run_id': 1, 'mode': 'train', 'epochs': epochs, 'batch_size': batch_size,
+                                'selected_model': None, 'client': worker, 'prediction_mode': None}
                             json.dump(config_dict, file)
                         file.close()
-                        c.trigger_dag('fedgen-trigger', conf={})
+                        c.trigger_dag('trainer')
                         while state != 'success':
-                            dag_runs = DagRun.find(dag_id='fedgen-trigger')
+                            dag_runs = DagRun.find(dag_id='trainer')
                             dag_runs = dag_runs[-1]
                             state = dag_runs.state
                             time.sleep(60)
                         if state == 'success':
-                            st.success('Federation Process Successfully Completed!')
-            dag_runs = DagRun.find(dag_id='fedgen-platform')
+                            st.success('Process Successfully Completed!')
+            dag_runs = DagRun.find(dag_id='trainer')
             dag_runs = dag_runs[-1]
             state = dag_runs.state
             if state == 'success':
-                results = pd.read_excel('/home/ubuntu/airflow/results/performance_comparison.xlsx', index_col=False)
+                results = pd.read_csv('/home/ubuntu/GenAI-Rush/metrics.csv', index_col=False)
                 st.subheader('Model Performance')
                 workerResults = {}
                 for col in results.columns:
@@ -129,7 +133,7 @@ if authentication_status:
                     st.dataframe(workerResults)
                 st.subheader('Download Your Trained Model Weights')
                 col1, col2, col3 = st.columns(3)
-                weights = torch.load(f'/home/ubuntu/kreedaAI/fedgen/models/encrypted_{worker}.pth')
+                weights = torch.load(f'/home/ubuntu/GenAI-Rush/models/encrypted_{worker}.pth')
                 pklData = io.BytesIO()
                 pickle.dump(weights, pklData)
                 col1.download_button(
@@ -137,7 +141,7 @@ if authentication_status:
                     data=pklData,
                     file_name=f'encrypted_{worker}.pkl',
                 )
-                weights = torch.load(f'/home/ubuntu/kreedaAI/fedgen/models/encrypted_federated_{worker}.pth')
+                weights = torch.load(f'/home/ubuntu/GenAI-Rush/models/encrypted_federated_{worker}.pth')
                 pklData = io.BytesIO()
                 pickle.dump(weights, pklData)
                 col2.download_button(
@@ -145,7 +149,7 @@ if authentication_status:
                     data=pklData,
                     file_name=f'encrypted_{worker}.pkl',
                 )
-                weights = torch.load(f'/home/ubuntu/kreedaAI/fedgen/models/encrypted_global_federated.pth')
+                weights = torch.load(f'/home/ubuntu/GenAI-Rush/models/encrypted_global_federated.pth')
                 pklData = io.BytesIO()
                 pickle.dump(weights, pklData)
                 col3.download_button(
@@ -163,58 +167,58 @@ if authentication_status:
                     f"{workerResults['Client'][0]}: Federated: {workerResults['Federated'][0]} (Recommended)", 
                     f"{workerResults['Client'][1]}: Federated: {workerResults['Federated'][1]}", 
                     f"{workerResults['Client'][2]}: Federated: {workerResults['Federated'][2]} (Low Performance)"))
-                predictionMode = False
-                files = None
-                directory = None
-                if modelUsage is not None:
-                    if modelUsage == 'Single Files (Max 5)':
-                        files = st.file_uploader("Upload your files", type=(["jpg", "jpeg", "png"]), accept_multiple_files=True)
-                        if files is not None:
-                            files = [filename.name for filename in files]
-                            if len(files) > 5:
-                                st.error('Max limit of 5 files allowed')
-                            else:
-                                predictionMode = True
-                    elif modelUsage == 'Set of Files':
-                        zipFile = st.file_uploader("Upload your files", type=(["zip"]), accept_multiple_files=True)
-                        if zipFile is not None:
-                            for filename in zipFile:
-                                with ZipFile(f'/home/ubuntu/kreedaAI/fedgen/to_predict/{filename.name}', 'r') as zipObj:
-                                    zipObj.extractall('/home/ubuntu/kreedaAI/fedgen/to_predict')
-                                directory = filename.name.split('.')[0]
-                            predictionMode = True
-                    if predictionMode is True and selectedModel is not None:
-                        if 'Global' in selectedModel:
-                            selectedModel = 'Global Model: Encrypted & Federated'
-                        elif 'Federated: False' in selectedModel:
-                            selectedModel = 'Client Model - Encrypted'
-                        elif 'Federated: True' in selectedModel:
-                            selectedModel = 'Client Model - Encrypted & Federated'
-                        predictButton = sidebarObj.button('Get Results')
-                        if predictButton:
-                            state = 'failed'
-                            with st.spinner('Please wait for the process to complete...'):
-                                with open('/home/ubuntu/airflow/dags/run_config.json', 'w') as file:
-                                    config_dict = {'run_id': 1, 'mode': 'predict', 'epochs': epochs, 'batch_size': batch_size,
-                                                    'selected_model': selectedModel, 'client': worker, 'prediction_mode': modelUsage}
-                                    json.dump(config_dict, file)
-                                file.close()
-                                c.trigger_dag('fedgen-trigger', conf={})
-                                while state != 'success':
-                                    dag_runs = DagRun.find(dag_id='fedgen-trigger')
-                                    dag_runs = dag_runs[-1]
-                                    state = dag_runs.state
-                                    time.sleep(10)
-                                if state == 'success':
-                                    st.subheader('Predictions')
-                                    results = pd.read_csv('/home/ubuntu/airflow/results/predictions.csv', index_col=False)
-                                    grid = st.columns(5)
-                                    for index in range(0, len(results), 5):
-                                        for idx in range(5):
-                                            try:
-                                                grid[idx].image(results['File Path'][idx+index], caption=results['Prediction'][idx+index].capitalize())
-                                            except:
-                                                pass
+                # predictionMode = False
+                # files = None
+                # directory = None
+                # if modelUsage is not None:
+                #     if modelUsage == 'Single Files (Max 5)':
+                #         files = st.file_uploader("Upload your files", type=(["jpg", "jpeg", "png"]), accept_multiple_files=True)
+                #         if files is not None:
+                #             files = [filename.name for filename in files]
+                #             if len(files) > 5:
+                #                 st.error('Max limit of 5 files allowed')
+                #             else:
+                #                 predictionMode = True
+                #     elif modelUsage == 'Set of Files':
+                #         zipFile = st.file_uploader("Upload your files", type=(["zip"]), accept_multiple_files=True)
+                #         if zipFile is not None:
+                #             for filename in zipFile:
+                #                 with ZipFile(f'/home/ubuntu/kreedaAI/fedgen/to_predict/{filename.name}', 'r') as zipObj:
+                #                     zipObj.extractall('/home/ubuntu/kreedaAI/fedgen/to_predict')
+                #                 directory = filename.name.split('.')[0]
+                #             predictionMode = True
+                #     if predictionMode is True and selectedModel is not None:
+                #         if 'Global' in selectedModel:
+                #             selectedModel = 'Global Model: Encrypted & Federated'
+                #         elif 'Federated: False' in selectedModel:
+                #             selectedModel = 'Client Model - Encrypted'
+                #         elif 'Federated: True' in selectedModel:
+                #             selectedModel = 'Client Model - Encrypted & Federated'
+                #         predictButton = sidebarObj.button('Get Results')
+                #         if predictButton:
+                #             state = 'failed'
+                #             with st.spinner('Please wait for the process to complete...'):
+                #                 with open('/home/ubuntu/airflow/dags/run_config.json', 'w') as file:
+                #                     config_dict = {'run_id': 1, 'mode': 'predict', 'epochs': epochs, 'batch_size': batch_size,
+                #                                     'selected_model': selectedModel, 'client': worker, 'prediction_mode': modelUsage}
+                #                     json.dump(config_dict, file)
+                #                 file.close()
+                #                 c.trigger_dag('fedgen-trigger', conf={})
+                #                 while state != 'success':
+                #                     dag_runs = DagRun.find(dag_id='fedgen-trigger')
+                #                     dag_runs = dag_runs[-1]
+                #                     state = dag_runs.state
+                #                     time.sleep(10)
+                #                 if state == 'success':
+                #                     st.subheader('Predictions')
+                #                     results = pd.read_csv('/home/ubuntu/airflow/results/predictions.csv', index_col=False)
+                #                     grid = st.columns(5)
+                #                     for index in range(0, len(results), 5):
+                #                         for idx in range(5):
+                #                             try:
+                #                                 grid[idx].image(results['File Path'][idx+index], caption=results['Prediction'][idx+index].capitalize())
+                #                             except:
+                #                                 pass
     if authenticator.logout('Logout', 'main', key='unique_key'):
         authentication_status = None
 elif authentication_status is False:

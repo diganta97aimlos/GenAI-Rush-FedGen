@@ -1,5 +1,4 @@
 import torch
-from fas14mnet import Fas14MNet
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from opacus.utils.batch_memory_manager import BatchMemoryManager
@@ -9,8 +8,8 @@ import pandas as pd
 import numpy as np
 import os
 import torch.nn as nn
-from packages.fedgen.fedgen.utils import PrivateModelBuilder
-from packages.fedgen.fedgen.dataset import FedDataset, transform
+from fedgen.utils import PrivateModelBuilder
+from fedgen.dataset import FedDataset, transform
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 from torch.utils.tensorboard import SummaryWriter
@@ -31,13 +30,13 @@ class FedTrainer():
         self.EPSILON = EPSILON
         self.DELTA = DELTA
         self.val_loader = valDataLoader
-        self.baseModel = models.resnet18(pretrained=False)
+        self.baseModel = models.resnet101(pretrained=False)
         num_features = self.baseModel.fc.in_features
         self.baseModel.fc = nn.Linear(num_features, self.categories)
         modelBuilder = PrivateModelBuilder(model=self.baseModel, trainDataLoader=trainDataLoader)
         self.encryptedModel, self.optimizer, self.train_loader, self.privacy_engine = modelBuilder.privatization(MAX_GRAD_NORM=self.MAX_GRAD_NORM,
                                                                                             EPSILON=self.EPSILON, DELTA=self.DELTA, EPOCHS=self.epochs)
-        self.encryptedModel.load_state_dict(torch.load(f'/home/ubuntu/kreedaAI/fedgen/models/encrypted_{self.worker}.pth'), strict=False)
+        self.encryptedModel.load_state_dict(torch.load(f'/home/ubuntu/GenAI-Rush/models/encrypted_{self.worker}.pth'), strict=False)
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=10, gamma=0.1, verbose=False)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -141,7 +140,7 @@ class FedTrainer():
         
         self.encryptedModel.eval()
         self.encryptedModel.to(device='cpu')
-        torch.save(self.encryptedModel.state_dict(), f'/home/ubuntu/kreedaAI/fedgen/models/encrypted_{self.worker}.pth')
+        torch.save(self.encryptedModel.state_dict(), f'/home/ubuntu/GenAI-Rush/models/encrypted_{self.worker}.pth')
         torch.cuda.empty_cache()
 
         tb.close()

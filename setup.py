@@ -8,15 +8,15 @@ with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
 VERSION = '0.1.0'
-DESCRIPTION = 'Generative & Federated AI PLatform from Aimlos'
+DESCRIPTION = 'Generative & Federated AI PLatform from K{r}eeda Labs'
 
 # Setting up
 setup(
     name="fedgen",
     version=VERSION,
     author="Diganta Dutta, Anmol Dhingra",
-    author_email="diganta.dutta@aimlos.in", "anmoldhingra1@gmail.com"
-    url="https://github.com/Kreeda-Studios/KreedaAI-FedGen/tree/prototype/fedgen",
+    author_email="diganta.dutta@aimlos.in, anmoldhingra1@gmail.com",
+    url="https://github.com/diganta97aimlos/GenAI-Rush-FedGen/tree/infra",
     description=DESCRIPTION,
     long_description_content_type="text/markdown",
     long_description=long_description,

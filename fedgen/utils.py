@@ -4,7 +4,7 @@ from opacus import GradSampleModule
 from opacus.data_loader import DPDataLoader
 from opacus.accountants import RDPAccountant
 import torch
-from packages.fedgen.fedgen.dataset import FedDataset, transform, test_transform
+from fedgen.dataset import FedDataset, transform, test_transform
 from torch.utils.data import DataLoader
 from opacus.privacy_engine import PrivacyEngine
 import pandas as pd
@@ -20,7 +20,7 @@ class PrivateModelBuilder():
         errors = ModuleValidator.validate(self.model, strict=False)
         if len(errors) > 0:
             self.model = ModuleValidator.fix(self.model)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.1)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01)
         # self.model = GradSampleModule(self.model)
         privacy_engine = PrivacyEngine()
         self.model, self.optimizer, self.train_loader = privacy_engine.make_private_with_epsilon(
@@ -59,7 +59,7 @@ class CreateLoaders():
         trainDataset = FedDataset(file_paths=train_file_paths, labels=trainDf.category.tolist(), transform=transform)
         trainDataLoader = DataLoader(trainDataset, batch_size=self.batch_size, shuffle=True)
 
-        valDf = pd.read_csv(os.path.join(self.save_path, f'valid_{self.worker}.csv'), index_col=False)
+        valDf = pd.read_csv(os.path.join(self.save_path, f'val_{self.worker}.csv'), index_col=False)
         val_file_paths = valDf.file_path
         valDataset = FedDataset(file_paths=val_file_paths, labels=valDf.category.tolist(), transform=transform)
         valDataLoader = DataLoader(valDataset, batch_size=self.max_physical_batch_size, shuffle=True)

@@ -1,11 +1,11 @@
 import os
 import torch
 from torch import nn, optim
-from fas14mnet import Fas14MNet
-from packages.fedgen.fedgen.utils import PrivateModelBuilder
-from packages.fedgen.fedgen.testModule import TestingModule
-from packages.fedgen.fedgen.utils import CreateLoaders
+from fedgen.utils import PrivateModelBuilder
+from fedgen.testModule import TestingModule
+from fedgen.utils import CreateLoaders
 from torchvision import models
+import pandas as pd
 
 class TestFederated():
 
@@ -29,7 +29,6 @@ class TestFederated():
 
     def loadModels(self, trainDataLoader=None, weightsPath=None):
         modelBuilder = PrivateModelBuilder(model=self.baseModel, trainDataLoader=trainDataLoader)
-        encryptedModel, _, _ = modelBuilder.privatization(MAX_GRAD_NORM=self.MAX_GRAD_NORM)
         encryptedModel, _, _, _ = modelBuilder.privatization(MAX_GRAD_NORM=self.MAX_GRAD_NORM, EPSILON=self.EPSILON, DELTA=self.DELTA, EPOCHS=self.EPOCHS)
         encryptedModel.load_state_dict(torch.load(weightsPath))
         return encryptedModel
@@ -37,9 +36,9 @@ class TestFederated():
     def testClientModels(self):
         testObj = TestingModule(device=self.device)
         for worker in self.workers:
-            loaderObj = CreateLoaders(save_path=self.save_path, batch_size=self.batch_size, test_batch_size=self.max_physical_batch_size, worker=worker)
+            loaderObj = CreateLoaders(save_path=self.save_path, batch_size=self.batch_size, max_physical_batch_size=self.max_physical_batch_size, worker=worker)
             trainDataLoader, _, testDataLoader = loaderObj.fetchLoaders()
-            clientModel = self.loadModels(trainDataLoader=trainDataLoader, weightsPath=f'/home/ubuntu/kreedaAI/fedgen/models/encrypted_{worker}.pth')
+            clientModel = self.loadModels(trainDataLoader=trainDataLoader, weightsPath=f'/home/ubuntu/GenAI-Rush/models/encrypted_{worker}.pth')
             performance = testObj.runTestSession(model=clientModel, testDataLoader=testDataLoader)
             self.performances['Client'].append(worker.capitalize())
             self.performances['Federated'].append(False)
@@ -52,9 +51,9 @@ class TestFederated():
     def testFederatedClientModels(self):
         testObj = TestingModule(device=self.device)
         for worker in self.workers:
-            loaderObj = CreateLoaders(save_path=self.save_path, batch_size=self.batch_size, test_batch_size=self.max_physical_batch_size, worker=worker)
+            loaderObj = CreateLoaders(save_path=self.save_path, batch_size=self.batch_size, max_physical_batch_size=self.max_physical_batch_size, worker=worker)
             trainDataLoader, _, testDataLoader = loaderObj.fetchLoaders()
-            clientModel = self.loadModels(trainDataLoader=trainDataLoader, weightsPath=f'/home/ubuntu/kreedaAI/fedgen/models/encrypted_{worker}.pth')
+            clientModel = self.loadModels(trainDataLoader=trainDataLoader, weightsPath=f'/home/ubuntu/GenAI-Rush/models/encrypted_{worker}.pth')
             performance = testObj.runTestSession(model=clientModel, testDataLoader=testDataLoader)
             self.performances['Client'].append(worker.capitalize())
             self.performances['Federated'].append(True)
@@ -67,9 +66,9 @@ class TestFederated():
     def testFederatedGlobalModel(self):
         testObj = TestingModule(device=self.device)
         for worker in self.workers:
-            loaderObj = CreateLoaders(save_path=self.save_path, batch_size=self.batch_size, test_batch_size=self.max_physical_batch_size, worker=worker)
+            loaderObj = CreateLoaders(save_path=self.save_path, batch_size=self.batch_size, max_physical_batch_size=self.max_physical_batch_size, worker=worker)
             trainDataLoader, _, testDataLoader = loaderObj.fetchLoaders()
-            fedGlobalModel = self.loadModels(trainDataLoader=trainDataLoader, weightsPath='/home/ubuntu/kreedaAI/fedgen/models/encrypted_global_federated.pth')
+            fedGlobalModel = self.loadModels(trainDataLoader=trainDataLoader, weightsPath='/home/ubuntu/GenAI-Rush/models/encrypted_global_federated.pth')
             performance = testObj.runTestSession(model=fedGlobalModel, testDataLoader=testDataLoader)
             self.performances['Client'].append(f'Global - {worker.capitalize()}')
             self.performances['Federated'].append(True)
@@ -78,4 +77,4 @@ class TestFederated():
             self.performances['Precision'].append(performance['precision'])
             self.performances['Recall'].append(performance['recall'])
             self.performances['F1 Score'].append(performance['f1_score'])
-        return self.performances
+        return pd.DataFrame(self.performances)
