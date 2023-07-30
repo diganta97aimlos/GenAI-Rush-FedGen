@@ -114,23 +114,23 @@ if authentication_status:
             dag_runs = dag_runs[-1]
             state = dag_runs.state
             if state == 'success':
-                results = pd.read_csv('/home/ubuntu/GenAI-Rush/metrics.csv', index_col=False)
-                st.subheader('Model Performance')
-                workerResults = {}
-                for col in results.columns:
-                    workerResults[col] = list()
-                if worker is not None:
-                    for index in range(len(results)):
-                        if worker.lower() in results['Client'][index].lower():
-                            workerResults['Client'].append(results['Client'][index])
-                            workerResults['Federated'].append(results['Federated'][index])
-                            workerResults['Test Loss'].append(results['Test Loss'][index])
-                            workerResults['Test Accuracy'].append(results['Test Accuracy'][index])
-                            workerResults['Precision'].append(results['Precision'][index])
-                            workerResults['Recall'].append(results['Recall'][index])
-                            workerResults['F1 Score'].append(results['F1 Score'][index])
-                    workerResults = pd.DataFrame(workerResults)
-                    st.dataframe(workerResults)
+                # results = pd.read_csv('/home/ubuntu/GenAI-Rush/metrics.csv', index_col=False)
+                # st.subheader('Model Performance')
+                # workerResults = {}
+                # for col in results.columns:
+                #     workerResults[col] = list()
+                # if worker is not None:
+                #     for index in range(len(results)):
+                #         if worker.lower() in results['Client'][index].lower():
+                #             workerResults['Client'].append(results['Client'][index])
+                #             workerResults['Federated'].append(results['Federated'][index])
+                #             workerResults['Test Loss'].append(results['Test Loss'][index])
+                #             workerResults['Test Accuracy'].append(results['Test Accuracy'][index])
+                #             workerResults['Precision'].append(results['Precision'][index])
+                #             workerResults['Recall'].append(results['Recall'][index])
+                #             workerResults['F1 Score'].append(results['F1 Score'][index])
+                #     workerResults = pd.DataFrame(workerResults)
+                #     st.dataframe(workerResults)
                 st.subheader('Download Your Trained Model Weights')
                 col1, col2, col3 = st.columns(3)
                 weights = torch.load(f'/home/ubuntu/GenAI-Rush/models/encrypted_{worker}.pth')
@@ -159,14 +159,14 @@ if authentication_status:
                 )
                 st.subheader('Use Your Models')
                 modelUsage = sidebarObj.selectbox('Use Your Model', (None, 'Single Files (Max 5)', 'Set of Files'))
-                workerResults['Model Score'] = (workerResults['Test Accuracy'] * workerResults['Precision'] * workerResults['Recall'] \
-                    * workerResults['F1 Score'])/workerResults['Test Loss']
-                workerResults = workerResults.sort_values(by=['Model Score'], ascending=False)
-                selectedModel = sidebarObj.selectbox('Select Your Model', 
-                    (None, 
-                    f"{workerResults['Client'][0]}: Federated: {workerResults['Federated'][0]} (Recommended)", 
-                    f"{workerResults['Client'][1]}: Federated: {workerResults['Federated'][1]}", 
-                    f"{workerResults['Client'][2]}: Federated: {workerResults['Federated'][2]} (Low Performance)"))
+                # workerResults['Model Score'] = (workerResults['Test Accuracy'] * workerResults['Precision'] * workerResults['Recall'] \
+                #     * workerResults['F1 Score'])/workerResults['Test Loss']
+                # workerResults = workerResults.sort_values(by=['Model Score'], ascending=False)
+                # selectedModel = sidebarObj.selectbox('Select Your Model', 
+                #     (None, 
+                #     f"{workerResults['Client'][0]}: Federated: {workerResults['Federated'][0]} (Recommended)", 
+                #     f"{workerResults['Client'][1]}: Federated: {workerResults['Federated'][1]}", 
+                #     f"{workerResults['Client'][2]}: Federated: {workerResults['Federated'][2]} (Low Performance)"))
                 # predictionMode = False
                 # files = None
                 # directory = None
